@@ -1,5 +1,5 @@
 .bunny {
-  --carrot-size: 76px;
+  --carrot-size: 92px;
   position: fixed;
   bottom: 0;
   margin-bottom: env(safe-area-inset-bottom, 0px);
@@ -54,11 +54,11 @@
 }
 
 @media (width < 1024px) {
-  .bunny { --carrot-size: 66px; }
+  .bunny { --carrot-size: 80px; }
 }
 
 @media (width < 600px) {
-  .bunny { --carrot-size: 56px; }
+  .bunny { --carrot-size: 68px; }
 }
 
 .terminalLayer {
@@ -172,6 +172,10 @@
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
+
+.spokenWord { transition: color 100ms; }
+.spokenWord[data-spoken="true"] { color: #80BBFF; }
+.terminalLayer[inert] .spokenWord { color: inherit; transition: none; }
 
 .messageText a { text-decoration: underline; text-underline-offset: 3px; }
 .messageText a:hover { color: var(--terminal-accent); }

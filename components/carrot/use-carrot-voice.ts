@@ -2,60 +2,56 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const voiceUrl = "/api/voice";
-const segmentLimit = 400;
+import { speechChunks, timedWords, type TextRange, type TimedWord } from "./voice-timing";
+
 const maxCachedClips = 24;
 const maxCachedClipBytes = 512_000;
-const sentences = new Intl.Segmenter("en", { granularity: "sentence" });
+type Clip = { blob: Blob; alignment?: unknown };
 
-function cleanSpeech(text: string) {
-  return text
-    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/\b(?:[a-z][a-z0-9+.-]*:\/\/|mailto:)[^\s<>]+/gi, "")
-    .replace(/\b(?:[\w-]+\.)+[a-z]{2,}(?:\/[^\s<>]*)?/gi, "")
-    .replace(/(?<!\S)\/[\w-]+(?:\/[\w-]+)*\b/g, "")
-    .replace(/[#*0-9]\uFE0F?\u20E3|\p{Extended_Pictographic}|\p{Regional_Indicator}|\p{Emoji_Modifier}|[\u200D\uFE0E\uFE0F]/gu, "")
-    .replace(/^\s*(?:#{1,6}\s+|>\s*|(?:[-+*]|\d+[.)])\s+)/gm, "")
-    .replace(/[`*_~]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+async function readClip(response: Response): Promise<Clip> {
+  const type = response.headers.get("Content-Type");
+  if (response.ok && type?.startsWith("audio/")) return { blob: await response.blob() };
+  if (!response.ok || !type?.startsWith("application/json")) throw new Error("Carrot voice unavailable");
 
-function chunks(text: string) {
-  const segments: string[] = [];
-  let current = "";
-  for (const { segment } of sentences.segment(text)) {
-    const sentence = segment.trim();
-    const combined = current ? `${current} ${sentence}` : sentence;
-    if (combined.length <= segmentLimit) {
-      current = combined;
-      continue;
-    }
-    if (current) segments.push(current);
-    current = "";
-    for (const word of sentence.split(/\s+/)) {
-      if (current && current.length + word.length + 1 > segmentLimit) {
-        segments.push(current);
-        current = "";
-      }
-      let remaining = word;
-      while (remaining.length > segmentLimit) {
-        let end = segmentLimit;
-        if (/[\uD800-\uDBFF]/.test(remaining[end - 1])) end -= 1;
-        segments.push(remaining.slice(0, end));
-        remaining = remaining.slice(end);
-      }
-      current = current ? `${current} ${remaining}` : remaining;
-    }
+  const { audio_base64, alignment } = await response.json();
+  if (typeof audio_base64 !== "string" || audio_base64.length > 3_000_000) {
+    throw new Error("Invalid voice clip");
   }
-  if (current) segments.push(current);
-  return segments;
+  return { blob: new Blob([Uint8Array.from(atob(audio_base64), (char) => char.charCodeAt(0))], { type: "audio/mpeg" }), alignment };
 }
 
-async function playClip(blob: Blob, signal: AbortSignal) {
+async function playClip(
+  blob: Blob,
+  signal: AbortSignal,
+  words: TimedWord[],
+  highlight: (word: TextRange | null) => void,
+) {
   const url = URL.createObjectURL(blob);
   const audio = new Audio(url);
   let cancel: (() => void) | undefined;
+  let frame = 0;
+  let previous: TextRange | null = null;
+  function update() {
+    const time = audio.currentTime;
+    const current = words.findLast(({ from, to }) => time >= from && time < to) ?? null;
+    if (current?.start !== previous?.start || current?.end !== previous?.end) {
+      previous = current;
+      highlight(current);
+    }
+    frame = requestAnimationFrame(update);
+  }
+  function clearHighlight() {
+    cancelAnimationFrame(frame);
+    previous = null;
+    highlight(null);
+  }
+  if (words.length) {
+    audio.addEventListener("playing", () => {
+      cancelAnimationFrame(frame);
+      update();
+    });
+    for (const event of ["pause", "waiting", "seeking"]) audio.addEventListener(event, clearHighlight);
+  }
   try {
     await new Promise<void>((resolve, reject) => {
       cancel = () => {
@@ -68,6 +64,7 @@ async function playClip(blob: Blob, signal: AbortSignal) {
       void audio.play().catch(reject);
     });
   } finally {
+    if (words.length) clearHighlight();
     if (cancel) signal.removeEventListener("abort", cancel);
     audio.onended = null;
     audio.onerror = null;
@@ -83,12 +80,14 @@ export function useCarrotVoice() {
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState<number | null>(null);
   const request = useRef<{ id: number; controller: AbortController } | null>(null);
-  const clips = useRef(new Map<string, Blob>());
+  const clips = useRef(new Map<string, Clip>());
+  const [highlight, setHighlight] = useState<(TextRange & { id: number }) | null>(null);
 
   const stop = useCallback(() => {
     request.current?.controller.abort();
     request.current = null;
     setSpeaking(null);
+    setHighlight(null);
     setLoading(false);
   }, []);
 
@@ -104,8 +103,8 @@ export function useCarrotVoice() {
     const wasActive = request.current?.id === id;
     stop();
     if (wasActive) return;
-    const clean = cleanSpeech(text);
-    if (!clean) return;
+    const chunks = speechChunks(text);
+    if (!chunks.length) return;
 
     const controller = new AbortController();
     const { signal } = controller;
@@ -114,28 +113,26 @@ export function useCarrotVoice() {
     setFailed((current) => current === id ? null : current);
 
     try {
-      for (const segment of chunks(clean)) {
+      for (const chunk of chunks) {
+        const segment = chunk.text;
         if (signal.aborted) return;
-        let blob = clips.current.get(segment);
-        if (blob) {
+        let clip = clips.current.get(segment);
+        if (clip) {
           clips.current.delete(segment);
-          clips.current.set(segment, blob);
+          clips.current.set(segment, clip);
         } else {
           setLoading(true);
-          const response = await fetch(voiceUrl, {
+          const response = await fetch("/api/voice", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ text: segment }),
             signal,
           });
-          if (!response.ok || !response.headers.get("Content-Type")?.startsWith("audio/")) {
-            throw new Error("Carrot voice unavailable");
-          }
-          blob = await response.blob();
+          clip = await readClip(response);
           if (signal.aborted) return;
-          if (!blob.size) throw new Error("Empty voice clip");
-          if (blob.size <= maxCachedClipBytes) {
-            clips.current.set(segment, blob);
+          if (!clip.blob.size) throw new Error("Empty voice clip");
+          if (clip.blob.size <= maxCachedClipBytes) {
+            clips.current.set(segment, clip);
             if (clips.current.size > maxCachedClips) {
               const oldest = clips.current.keys().next().value;
               if (oldest !== undefined) clips.current.delete(oldest);
@@ -144,7 +141,9 @@ export function useCarrotVoice() {
         }
         setLoading(false);
         try {
-          await playClip(blob, signal);
+          await playClip(clip.blob, signal, timedWords(chunk, clip.alignment), (word) => {
+            if (request.current?.controller === controller) setHighlight(word && { ...word, id });
+          });
         } catch (error) {
           clips.current.delete(segment);
           throw error;
@@ -157,5 +156,5 @@ export function useCarrotVoice() {
     }
   }
 
-  return { speaking, loading, failed, toggle, stop, clear };
+  return { speaking, loading, failed, highlight, toggle, stop, clear };
 }

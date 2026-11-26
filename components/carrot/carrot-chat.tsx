@@ -6,6 +6,7 @@ import { chatLimits, type ConversationMessage } from "@/lib/carrot/chat-contract
 import { approvedProjectLinks, isApprovedProjectPath } from "@/lib/carrot/project-links";
 import { replyErrorMessage, streamReply } from "./stream-reply";
 import { useCarrotVoice } from "./use-carrot-voice";
+import { displayWords, type TextRange } from "./voice-timing";
 import styles from "./carrot.module.css";
 
 const suggestions = [
@@ -34,11 +35,28 @@ function recentContext(completed: ConversationMessage[], question: string): Conv
   return recent;
 }
 
-function Reply({ text }: { text: string }) {
-  return text.split(projectPaths).map((part, index) => {
-    if (!isApprovedProjectPath(part)) return part;
+function Reply({ text, highlight }: { text: string; highlight: TextRange | null }) {
+  function renderWords(value: string, offset: number) {
+    let cursor = 0;
+    return displayWords(value).flatMap(({ segment, index }) => {
+      const start = offset + index;
+      const end = start + segment.length;
+      const isSpoken = highlight !== null && start <= highlight.start && end > highlight.start;
+      const prefix = value.slice(cursor, index);
+      cursor = index + segment.length;
+      return [prefix, (
+        <span key={start} className={styles.spokenWord} data-spoken={isSpoken || undefined}>{segment}</span>
+      )];
+    }).concat(value.slice(cursor));
+  }
+
+  let cursor = 0;
+  return text.split(projectPaths).flatMap((part, index) => {
+    const start = cursor;
+    cursor += part.length;
+    if (!isApprovedProjectPath(part)) return renderWords(part, start);
     const { href, label } = approvedProjectLinks[part];
-    return <a key={index} href={href}>{label}</a>;
+    return <a key={`project-${index}`} href={href}>{label}</a>;
   });
 }
 
@@ -251,7 +269,7 @@ export function CarrotChat({ open, anchor, reduced, onHide }: {
                       {role === "assistant" ? "carrot ~" : "❯"}
                     </span>
                     <div className={styles.messageText}>
-                      {role === "assistant" ? <Reply text={content} /> : content}
+                      {role === "assistant" ? <Reply text={content} highlight={voice.highlight?.id === id ? voice.highlight : null} /> : content}
                       {role === "assistant" && id !== streamingId && (
                         <button
                           className={styles.listen}

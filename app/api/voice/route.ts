@@ -68,14 +68,15 @@ export async function POST(request: Request) {
     const response = await fetch(upstreamUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", Origin: portfolioOrigin },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, withTimestamps: true }),
       redirect: "error",
       cache: "no-store",
       signal: AbortSignal.any([request.signal, AbortSignal.timeout(15_000)]),
     });
     if (response.status === 429) return failure(429, response.headers.get("Retry-After") ?? undefined);
     const contentType = response.headers.get("Content-Type");
-    if (!response.ok || !response.body || !contentType?.startsWith("audio/")) return failure(502);
+    if (!response.ok || !response.body ||
+        (!contentType?.startsWith("audio/") && !contentType?.startsWith("application/json"))) return failure(502);
 
     return new Response(response.body, {
       headers: { "Content-Type": contentType, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" },
