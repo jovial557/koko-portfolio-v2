@@ -9,7 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "ai": "^7.0.183",
+    "motion": "^14.14.0",
     "next": "16.4.6",
+    "next-intl": "^4.16.2",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },

@@ -1,0 +1,35 @@
+{
+  "navigation": {
+    "primary": "Main navigation",
+    "home": "Kokona Akatsu, home",
+    "skip": "Skip to content",
+    "menu": "Menu",
+    "play": "Play",
+    "about": "About",
+    "resume": "Resume",
+    "theme": "Toggle light or dark theme",
+    "newYork": "New York",
+    "tokyo": "Tokyo"
+  },
+  "home": {
+    "title": "Nice to meet you!",
+    "first": "Hello. Just a grown-up kid<babyMe></babyMe> <firstNote>figuring things out.¹</firstNote> I’m a student at FIT, working toward product design. I love<catHeart></catHeart> <worldBuilding>world building</worldBuilding> since childhood.",
+    "second": "My first art teacher was a DS game that taught me to paint <secondNote>an apple.²</secondNote> Traded pointe <pointeShoes>shoes</pointeShoes> for an overworked laptop.",
+    "third": "Ask me about folk theory and <ghibli><emphasis>Hayao</emphasis> <miyazaki>Miyazaki!</miyazaki></ghibli> Oh, and let’s not forget <thirdNote>Patrick Bateman’s chair.³</thirdNote> Currently: pondering leftist edgelord <fingerHeart>culture</fingerHeart> and unapologetically looking up NYT crossword <crossword>answers.</crossword>",
+    "previewAlt": {
+      "equation": "A cosine graph and an integral joke about figuring out zero things.",
+      "worldBuilding": "A miniature exhibition with a wooden footbridge, greenery, and information panels.",
+      "apple": "A framed painting of a red apple.",
+      "ghibli": "A Studio Ghibli meme featuring Turnip Head and criticizing the use of AI to imitate the studio’s art.",
+      "bauhaus": "A Bauhaus poster showing the S533 chair with a curved tubular frame."
+    },
+    "selectedWorks": "Selected Works",
+    "viewProject": "View project",
+    "projects": {
+      "upcoming": { "title": "Coming soon...", "category": "UX/UI" },
+      "muji": { "title": "MUJI Responsive Website", "category": "Art Direction" },
+      "redline": { "title": "Redline", "category": "AI Generated Short Film" },
+      "nypl": { "title": "New York Public Library Brand Refresh", "category": "Dynamic Branding" }
+    }
+  }
+}

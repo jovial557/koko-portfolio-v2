@@ -1,0 +1,241 @@
+.bunny {
+  --carrot-size: 76px;
+  position: fixed;
+  bottom: 0;
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+  left: 0;
+  z-index: 30;
+  width: min(100%, var(--carrot-size));
+  aspect-ratio: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bunny:focus-visible {
+  outline-offset: -4px;
+}
+
+.sprite {
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+
+.sprite {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Ground line is at row 153 of 192. Keep the airborne hop frame’s lift. */
+  translate: 0 20.3125%;
+  pointer-events: none;
+}
+
+.invite {
+  position: absolute;
+  bottom: calc(100% - 8px);
+  left: 0;
+  width: max-content;
+  max-width: min(210px, calc(100vw - 24px));
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 5px 18px rgb(0 0 0 / 7.5%);
+  font: 12px/1.3 var(--font-project);
+  letter-spacing: -0.01em;
+  pointer-events: none;
+}
+
+.invite[data-right="true"] {
+  right: 0;
+  left: auto;
+}
+
+@media (width < 1024px) {
+  .bunny { --carrot-size: 66px; }
+}
+
+@media (width < 600px) {
+  .bunny { --carrot-size: 56px; }
+}
+
+.terminalLayer {
+  position: fixed;
+  inset: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  z-index: 31;
+  pointer-events: none;
+}
+
+.terminal {
+  --terminal-accent: #80BBFF;
+  --terminal-secondary: #888;
+  --terminal-border: #414141;
+  position: absolute;
+  left: var(--terminal-x, 12px);
+  top: var(--terminal-y, 12px);
+  width: var(--terminal-width, 520px);
+  height: var(--terminal-height, 340px);
+  transform-origin: var(--terminal-origin, 50% 100%);
+  display: grid;
+  grid-template-rows: 32px minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid var(--terminal-border);
+  border-radius: 9px;
+  background: #1e1e1e;
+  color: #e5e5e5;
+  color-scheme: dark;
+  box-shadow: 0 10px 34px rgb(0 0 0 / 24%), 0 2px 6px rgb(0 0 0 / 18%);
+  font: 12px/1.65 var(--font-label);
+  pointer-events: auto;
+}
+
+.titleBar {
+  display: grid;
+  grid-template-columns: 65px minmax(0, 1fr) 65px;
+  align-items: center;
+  padding-inline: 8px;
+  border-bottom: 1px solid var(--terminal-border);
+  background: #303030;
+}
+
+.titleBar h2 {
+  overflow: hidden;
+  font: 10px/1.3 var(--font-label);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trafficLights { display: flex; align-items: center; gap: 5px; }
+
+.trafficLights button {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  border-radius: 50%;
+  color: transparent;
+  font: 12px/1 var(--font-label);
+  cursor: pointer;
+}
+
+.trafficLights button:hover,
+.trafficLights button:focus-visible { color: #252525; }
+
+.trafficLights [data-color="red"] { background: #ed6a5e; }
+.trafficLights [data-color="yellow"] { background: #e4b64c; }
+.trafficLights [data-color="green"] { background: #64b767; }
+
+.reset {
+  justify-self: end;
+  width: 26px;
+  height: 26px;
+  color: #aaa;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.reset:hover { color: #e5e5e5; }
+
+.conversation {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding: 14px;
+  scrollbar-width: thin;
+}
+
+.initialized { margin-bottom: 10px; color: var(--terminal-secondary); }
+.suggestions { display: grid; justify-items: start; gap: 2px; }
+.suggestions button { padding: 2px 0; text-align: left; cursor: pointer; }
+.suggestions button:hover { color: var(--terminal-accent); }
+.suggestions span,
+.prompt > span { color: var(--terminal-accent); }
+
+.message {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+
+.messagePrefix { flex: none; color: var(--terminal-accent); }
+.message[data-role="user"] { color: #c5ccd3; }
+.message[data-role="user"] .messagePrefix { color: #a6b6c6; }
+
+.messageText {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.messageText a { text-decoration: underline; text-underline-offset: 3px; }
+.messageText a:hover { color: var(--terminal-accent); }
+
+.listen {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-start: 6px;
+  padding-inline: 3px;
+  color: var(--terminal-secondary);
+  font: 10px/1.2 var(--font-label);
+  vertical-align: baseline;
+  cursor: pointer;
+}
+
+.listen:hover { color: var(--terminal-accent); }
+.thinking { display: flex; align-items: center; gap: 7px; color: var(--terminal-secondary); }
+.error { color: #eba49a; }
+
+.spinner {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--terminal-border);
+  border-top-color: var(--terminal-accent);
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; }
+}
+
+.prompt {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px 5px 14px;
+  border-top: 1px solid var(--terminal-border);
+}
+
+.prompt input {
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  color: inherit;
+  caret-color: var(--terminal-accent);
+}
+
+.prompt input::placeholder { color: var(--terminal-secondary); font-size: 12px; }
+.prompt input:focus-visible { outline: 1px solid var(--terminal-border); outline-offset: 3px; }
+
+.prompt button {
+  min-width: 26px;
+  min-height: 28px;
+  color: var(--terminal-accent);
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.prompt button:disabled { color: var(--terminal-secondary); cursor: default; }
+
+@media (width < 600px) {
+  .prompt input { font-size: 16px; }
+}

@@ -1,0 +1,35 @@
+{
+  "navigation": {
+    "primary": "メインナビゲーション",
+    "home": "Kokona Akatsu、ホーム",
+    "skip": "本文へ移動",
+    "menu": "メニュー",
+    "play": "プレイ",
+    "about": "自己紹介",
+    "resume": "履歴書",
+    "theme": "ライト・ダークテーマを切り替える",
+    "newYork": "ニューヨーク",
+    "tokyo": "東京"
+  },
+  "home": {
+    "title": "はじめまして！",
+    "first": "こんにちは。大人になった今も、<babyMe></babyMe><firstNote>まだまだ試行錯誤中です。¹</firstNote> FITで学びながら、プロダクトデザインの道を目指<crossword>しています。</crossword>子どものころから<worldBuilding>世界をつくること</worldBuilding>が大好きです<catHeart></catHeart>。",
+    "second": "初めて絵を教えてくれたのは、<secondNote>りんごの描き方</secondNote><emphasis>を教えてくれた²</emphasis>DSのゲーム。今は<pointeShoes>トウシューズ</pointeShoes>の代わりに、酷使しているノートPCを使っています。",
+    "third": "民間伝承や<ghibli><miyazaki>宮﨑駿</miyazaki></ghibli>の話をしましょう！ <thirdNote>パトリック・ベイトマンの椅子³</thirdNote>もお忘れなく。最近は左派の過激なネット文化について<fingerHeart>考えたり</fingerHeart>、気兼ねなくNYTのクロスワードの答えを調べたりしています。",
+    "previewAlt": {
+      "equation": "余弦のグラフと積分で、わかったことはゼロだと表すジョーク。",
+      "worldBuilding": "木の橋や緑、解説パネルが並ぶ展示のミニチュア。",
+      "apple": "赤いりんごを描いた額入りの絵。",
+      "ghibli": "カブが登場し、AIでジブリの画風を模倣することを批判するミーム。",
+      "bauhaus": "曲線のパイプフレームを持つS533チェアを紹介するバウハウスのポスター。"
+    },
+    "selectedWorks": "主な作品",
+    "viewProject": "作品を見る",
+    "projects": {
+      "upcoming": { "title": "近日公開…", "category": "UX/UI" },
+      "muji": { "title": "MUJI レスポンシブサイト", "category": "アートディレクション" },
+      "redline": { "title": "Redline", "category": "AI生成の短編映像" },
+      "nypl": { "title": "ニューヨーク公共図書館のブランド刷新", "category": "ダイナミック・ブランディング" }
+    }
+  }
+}
