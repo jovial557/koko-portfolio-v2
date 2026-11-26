@@ -1,6 +1,6 @@
 "use client";
 
-import { useMotionValue, useReducedMotion } from "motion/react";
+import { type MotionValue } from "motion/react";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { sprites, spritePath } from "./sprites";
 
@@ -22,7 +22,10 @@ function destination(current: number, min: number, max: number, mobile: boolean,
   return clamp(current + (current < (min + max) / 2 ? fallback : -fallback), min, max);
 }
 
-export function useCarrotMotion(open: boolean, bunny: RefObject<HTMLButtonElement | null>) {
+export function useCarrotMotion(
+  open: boolean, bunny: RefObject<HTMLButtonElement | null>, x: MotionValue<number>,
+  reduced: boolean, guide: "travel" | "parked" | undefined,
+) {
   const [entered, setEntered] = useState(false);
   const [hopping, setHopping] = useState(false);
   const [facingRight, setFacingRight] = useState(true);
@@ -32,9 +35,9 @@ export function useCarrotMotion(open: boolean, bunny: RefObject<HTMLButtonElemen
   const pendingHop = useRef<(() => void) | null>(null);
   const direction = useRef(true);
   const viewport = useRef({ min: 0, max: 0, mobile: false });
-  const x = useMotionValue(0);
-  const reduced = Boolean(useReducedMotion());
-  const mode = open ? "laptop" : hopping && !reduced ? "hopping" : "idle";
+  const mode = guide === "travel"
+    ? reduced ? "idle" : "hopping"
+    : open ? "laptop" : hopping && !reduced ? "hopping" : "idle";
 
   useEffect(() => {
     const images = Object.values(sprites).flat().map((frame) => {
@@ -74,7 +77,7 @@ export function useCarrotMotion(open: boolean, bunny: RefObject<HTMLButtonElemen
   }, [bunny, entered, x]);
 
   useEffect(() => {
-    if (!entered || open || reduced) return;
+    if (!entered || open || reduced || guide) return;
     let delay = 0;
     let animation = 0;
 
@@ -130,7 +133,7 @@ export function useCarrotMotion(open: boolean, bunny: RefObject<HTMLButtonElemen
       cancel();
       pendingHop.current = null;
     };
-  }, [entered, open, reduced, x]);
+  }, [entered, open, reduced, x, guide]);
 
   useEffect(() => {
     if (!entered || reduced) return;

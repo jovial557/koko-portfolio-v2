@@ -243,3 +243,55 @@
 @media (width < 600px) {
   .prompt input { font-size: 16px; }
 }
+
+.toolLog {
+  margin: 0 0 .65em;
+  padding: 0 0 0 .65em;
+  border-inline-start: 1px solid #414141;
+  list-style: none;
+  font-size: .92em;
+}
+
+.toolLog li + li { margin-top: .45em; }
+.toolLog code, .toolLog a, .toolLog button { color: #80bbff; font: inherit; }
+.toolLog a, .toolLog button { text-decoration: underline; text-underline-offset: .2em; }
+.toolLog button { cursor: pointer; }
+
+.bunny[data-guide] {
+  --carrot-size: 62px;
+}
+@media (width < 600px) {
+  .bunny[data-guide] { --carrot-size: 49px; }
+}
+
+.projectMenu {
+  margin-block: .45em 0;
+}
+
+.projectMenu ul {
+  display: grid;
+  gap: .15em;
+  margin: 0 0 .4em;
+  padding: 0;
+  list-style: none;
+}
+
+.projectMenu button {
+  padding: .12em 0;
+  text-align: left;
+  font: inherit;
+}
+
+.projectMenu button span {
+  color: #80bbff;
+}
+
+.projectMenu button:enabled {
+  cursor: pointer;
+}
+
+.projectMenu button:enabled:hover,
+.projectMenu button:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: .2em;
+}

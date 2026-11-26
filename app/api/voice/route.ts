@@ -1,8 +1,4 @@
-const productionUpstreamUrl = "https://carrot-voice-api.vercel.app/api/speak";
-const upstreamUrl =
-  (process.env.NODE_ENV === "development" && process.env.VERCEL !== "1"
-    ? process.env.CARROT_VOICE_PREVIEW_URL
-    : undefined) || productionUpstreamUrl;
+const upstreamUrl = "https://carrot-voice-api.vercel.app/api/speak";
 const portfolioOrigin = "https://konatsukoko.com";
 const maxTextLength = 450;
 const maxBodyBytes = 4096;

@@ -386,3 +386,14 @@ html {
     padding-inline: 16px;
   }
 }
+
+.selected-works li[data-carrot-highlight] .project-row {
+  box-shadow: inset 2px 0 #80bbff;
+  background: color-mix(in srgb, #80bbff 12%, transparent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .selected-works .project-row {
+    transition: background-color 220ms ease, box-shadow 220ms ease;
+  }
+}

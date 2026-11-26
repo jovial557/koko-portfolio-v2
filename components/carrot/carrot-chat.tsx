@@ -3,7 +3,13 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { chatLimits, type ConversationMessage } from "@/lib/carrot/chat-contract";
-import { approvedProjectLinks, isApprovedProjectPath } from "@/lib/carrot/project-links";
+import { approvedProjectLinks, isApprovedProjectPath, projectRegistry, type ProjectId } from "@/lib/carrot/project-links";
+import { prepareProjectGuide, type ToolEntry } from "@/lib/carrot/tool-contract";
+import {
+  isInvalidProjectSelection, projectMenu, projectMenuContext, projectMenuHint,
+  projectMenuQuestion, projectMenuSuggestion, readProjectSelection,
+} from "./project-menu";
+import { ToolLog } from "./tool-log";
 import { replyErrorMessage, streamReply } from "./stream-reply";
 import { useCarrotVoice } from "./use-carrot-voice";
 import { displayWords, type TextRange } from "./voice-timing";
@@ -12,14 +18,14 @@ import styles from "./carrot.module.css";
 const suggestions = [
   "What has Kokona been working on lately?",
   "How does Kokona approach a new challenge?",
-  "What's it like working with Kokona?",
+  projectMenuSuggestion,
 ];
 const projectPaths = new RegExp(
   `(?<!\\S)(${Object.keys(approvedProjectLinks).join("|")})(?=[\\s.,!?]|$)`,
   "g",
 );
 const motionEase = [0.22, 1, 0.36, 1] as const;
-type ChatMessage = ConversationMessage & { id: number };
+type ChatMessage = ConversationMessage & { id: number; tools?: ToolEntry[]; projectMenu?: true };
 type PendingReply = { id: number; controller: AbortController };
 
 function recentContext(completed: ConversationMessage[], question: string): ConversationMessage[] {
@@ -60,22 +66,27 @@ function Reply({ text, highlight }: { text: string; highlight: TextRange | null 
   });
 }
 
-export function CarrotChat({ open, anchor, reduced, onHide }: {
+export function CarrotChat({ open, anchor, reduced, onHide, onGuide, onResetGuide }: {
   open: boolean;
   anchor: RefObject<HTMLButtonElement | null>;
   reduced: boolean;
   onHide: () => void;
+  onGuide: (project: ProjectId) => boolean;
+  onResetGuide: () => void;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
+  const promptInput = useRef<HTMLInputElement>(null);
   const [expanded, setExpanded] = useState(false);
   const scroll = useRef<HTMLDivElement>(null);
   const nextId = useRef(0);
   const pending = useRef<PendingReply | null>(null);
+  const guideTimer = useRef<number | undefined>(undefined);
+  const [activeMenu, setActiveMenu] = useState<number | null>(null);
   const completed = useRef<ConversationMessage[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
-  const [status, setStatus] = useState<"idle" | "waiting" | "streaming">("idle");
+  const [status, setStatus] = useState<"idle" | "waiting" | "streaming" | "guiding">("idle");
   const [streamingId, setStreamingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const thinking = status === "waiting";
@@ -141,10 +152,15 @@ export function CarrotChat({ open, anchor, reduced, onHide }: {
     container.scrollTo({ top: container.scrollHeight, behavior: reduced || !messages.length ? "instant" : "smooth" });
   }, [messages, error, open, reduced, thinking]);
 
-  useEffect(() => () => pending.current?.controller.abort(), []);
+  useEffect(() => () => {
+    pending.current?.controller.abort();
+    window.clearTimeout(guideTimer.current);
+  }, []);
 
   function cancelPending() {
     voice.stop();
+    window.clearTimeout(guideTimer.current);
+    guideTimer.current = undefined;
     const request = pending.current;
     if (request) {
       pending.current = null;
@@ -162,6 +178,8 @@ export function CarrotChat({ open, anchor, reduced, onHide }: {
 
   function reset() {
     cancelPending();
+    onResetGuide();
+    setActiveMenu(null);
     voice.clear();
     completed.current = [];
     setMessages([]);
@@ -169,27 +187,90 @@ export function CarrotChat({ open, anchor, reduced, onHide }: {
     setError(null);
   }
 
+  function remember(question: string, answer: string) {
+    completed.current = [
+      ...completed.current,
+      { role: "user" as const, content: question },
+      { role: "assistant" as const, content: answer },
+    ].slice(-(chatLimits.messages - 1));
+  }
+
+  function addLocalReply(user: ChatMessage, reply: ChatMessage, context = reply.content) {
+    setMessages((current) => [...current, user, reply].slice(-24));
+    remember(user.content, context);
+  }
+
+  function startGuide(project: ProjectId) {
+    if (onGuide(project)) voice.stop();
+    else setError("Carrot couldn’t find that project row.");
+  }
+
   async function send(value: string) {
     const question = value.trim().slice(0, chatLimits.userCharacters);
-    if (!question || pending.current) return;
+    if (!question || pending.current || guideTimer.current !== undefined) return;
 
     const user: ChatMessage = { id: nextId.current++, role: "user", content: question };
+    setDraft("");
+    setError(null);
+
+    if (question.toLowerCase().replace(/[.!?]+$/, "") === projectMenuSuggestion.toLowerCase().slice(0, -1)) {
+      const id = nextId.current++;
+      setActiveMenu(id);
+      addLocalReply(user, { id, role: "assistant", content: projectMenuQuestion, projectMenu: true }, projectMenuContext);
+      promptInput.current?.focus({ preventScroll: true });
+      return;
+    }
+
+    if (activeMenu !== null && messages.some(({ id }) => id === activeMenu)) {
+      const choice = readProjectSelection(question);
+      if (choice) {
+        const offer = prepareProjectGuide(choice.project);
+        const project = projectRegistry[offer.project].title;
+        setActiveMenu(null);
+        voice.stop();
+        addLocalReply(user, {
+          id: nextId.current++, role: "assistant", content: `${project} it is. Hop this way!`,
+        }, `The visitor chose ${project} from the project menu and confirmed guidance to its Selected Works row.`);
+        setStatus("guiding");
+        guideTimer.current = window.setTimeout(() => {
+          guideTimer.current = undefined;
+          setStatus("idle");
+          startGuide(offer.project);
+        }, reduced ? 0 : 650);
+        return;
+      }
+
+      if (/^(?:cancel|never mind|nevermind)[.!]*$/i.test(question)) {
+        setActiveMenu(null);
+        addLocalReply(user, { id: nextId.current++, role: "assistant", content: "We can stay right here." });
+        return;
+      }
+
+      if (isInvalidProjectSelection(question)) {
+        addLocalReply(user, {
+          id: nextId.current++, role: "assistant", content: "That’s outside this menu. Pick A, B, or C, or click a project above.",
+        });
+        return;
+      }
+    } else if (/^(?:[a-z]|\[[a-z]\])[.!?]*$/i.test(question)) {
+      addLocalReply(user, { id: nextId.current++, role: "assistant", content: "What did you mean by that?" });
+      return;
+    }
+
     const request = { id: nextId.current++, controller: new AbortController() };
     pending.current = request;
     setMessages((current) => [...current, user].slice(-24));
-    setDraft("");
-    setError(null);
     setStreamingId(request.id);
     setStatus("waiting");
 
     try {
-      const answer = await streamReply(
+      const reply = await streamReply(
         recentContext(completed.current, question),
         request.controller.signal,
-        (text) => {
+        (text, tools) => {
           if (pending.current !== request) return;
           setStatus("streaming");
-          const assistant: ChatMessage = { id: request.id, role: "assistant", content: text };
+          const assistant: ChatMessage = { id: request.id, role: "assistant", content: text, tools };
           setMessages((current) => current.at(-1)?.id === request.id
             ? [...current.slice(0, -1), assistant]
             : [...current, assistant].slice(-24)
@@ -197,11 +278,15 @@ export function CarrotChat({ open, anchor, reduced, onHide }: {
         },
       );
       if (pending.current !== request) return;
-      completed.current = [
-        ...completed.current,
-        { role: "user" as const, content: question },
-        { role: "assistant" as const, content: answer },
-      ].slice(-(chatLimits.messages - 1));
+      if (reply.error) setError(reply.error);
+      const context = reply.text.trim() || reply.tools.map((entry) => {
+        if ("rejected" in entry) return `${entry.rejected} arguments were rejected.`;
+        const { result } = entry;
+        if ("project" in result) return `${result.name} returned ${result.project}.`;
+        if ("section" in result) return `${result.name} returned ${result.section}.`;
+        return `${result.name} returned a result.`;
+      }).join(" ");
+      remember(question, context);
     } catch (cause) {
       if (pending.current !== request) return;
       setMessages((current) => current.filter((message) => message.id !== request.id));
@@ -263,14 +348,15 @@ export function CarrotChat({ open, anchor, reduced, onHide }: {
                   </div>
                 </>
               ) : (
-                messages.map(({ id, role, content }) => (
+                messages.map(({ id, role, content, tools, projectMenu: hasProjectMenu }) => (
                   <div key={id} className={styles.message} data-role={role}>
                     <span className={styles.messagePrefix} aria-label={role === "assistant" ? "Carrot" : "You"}>
                       {role === "assistant" ? "carrot ~" : "❯"}
                     </span>
                     <div className={styles.messageText}>
+                      {!!tools?.length && <ToolLog entries={tools} reduced={reduced} ready={id !== streamingId} onGuide={startGuide} />}
                       {role === "assistant" ? <Reply text={content} highlight={voice.highlight?.id === id ? voice.highlight : null} /> : content}
-                      {role === "assistant" && id !== streamingId && (
+                      {role === "assistant" && content.trim() && id !== streamingId && (
                         <button
                           className={styles.listen}
                           type="button"
@@ -284,6 +370,20 @@ export function CarrotChat({ open, anchor, reduced, onHide }: {
                             ? voice.loading ? <span className={styles.spinner} aria-hidden="true" /> : "■"
                             : voice.failed === id ? "↻" : "◖))"}
                         </button>
+                      )}
+                      {hasProjectMenu && (
+                        <div className={styles.projectMenu}>
+                          <ul aria-label="Projects Carrot can guide you to">
+                            {projectMenu.map(({ letter, project }) => (
+                              <li key={project}>
+                                <button type="button" disabled={activeMenu !== id || status !== "idle"} onClick={() => void send(letter)}>
+                                  <span>[{letter}]</span> {projectRegistry[project].title}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                          <div>{projectMenuHint}</div>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -304,6 +404,7 @@ export function CarrotChat({ open, anchor, reduced, onHide }: {
             >
               <span aria-hidden="true">❯</span>
               <input
+                ref={promptInput}
                 aria-label="Ask about Koko"
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}

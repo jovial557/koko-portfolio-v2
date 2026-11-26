@@ -10,12 +10,13 @@ import crossword from "@/public/images/crossword.png";
 import fingerHeart from "@/public/images/finger-heart.png";
 import hayaoMiyazaki from "@/public/images/hayao-miyazaki.png";
 import pointeShoes from "@/public/images/pointe-shoes.png";
+import { portfolioSections, projectRegistry } from "@/lib/carrot/project-links";
 
 const projects = [
-  { id: "upcoming", number: "01", href: null, image: null },
-  { id: "muji", number: "02", href: "https://konatsukoko.com/muji", image: "/images/muji-preview.png" },
-  { id: "redline", number: "03", href: null, image: "/images/redline-preview.jpg" },
-  { id: "nypl", number: "04", href: "https://konatsukoko.com/nypl", image: "/images/nypl-preview.png" },
+  { id: "coming-soon", number: "01", href: projectRegistry["coming-soon"].href, image: null },
+  { id: "muji", number: "02", href: projectRegistry.muji.href, image: "/images/muji-preview.png" },
+  { id: "redline", number: "03", href: projectRegistry.redline.href, image: "/images/redline-preview.jpg" },
+  { id: "nypl", number: "04", href: projectRegistry.nypl.href, image: "/images/nypl-preview.png" },
 ] as const;
 
 const previewSources = {
@@ -73,8 +74,8 @@ export default async function HomePage() {
 
   return (
     <main id="main-content" className="homepage" tabIndex={-1}>
-      <section className="intro" aria-labelledby="intro-title">
-        <h1 id="intro-title">{t("title")}</h1>
+      <section className="intro" aria-labelledby={portfolioSections.introduction.elementId}>
+        <h1 id={portfolioSections.introduction.elementId}>{t("title")}</h1>
         <PlayfulAbout previews={previews}>
           <div className="intro-columns">
             <div>
@@ -86,15 +87,15 @@ export default async function HomePage() {
         </PlayfulAbout>
       </section>
 
-      <section className="selected-works" aria-labelledby="selected-works">
-        <h2 id="selected-works">
+      <section className="selected-works" aria-labelledby={portfolioSections["selected-works"].elementId}>
+        <h2 id={portfolioSections["selected-works"].elementId} tabIndex={-1}>
           {t("selectedWorks")} <span>(01-04)</span>
         </h2>
         <PortfolioCursorList
           projects={projects.map((project) => ({
             ...project,
-            title: t(`projects.${project.id}.title`),
-            category: t(`projects.${project.id}.category`),
+            title: t(`projects.${project.id === "coming-soon" ? "upcoming" : project.id}.title`),
+            category: t(`projects.${project.id === "coming-soon" ? "upcoming" : project.id}.category`),
           }))}
           viewProject={t("viewProject")}
         />

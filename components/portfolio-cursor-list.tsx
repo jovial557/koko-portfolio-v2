@@ -1,5 +1,7 @@
 "use client";
 
+import { isProjectId, projectRegistry } from "@/lib/carrot/project-links";
+
 import Image from "next/image";
 import { AnimatePresence, motion, useIsPresent, useMotionValue, useReducedMotion, useSpring, useTransform } from "motion/react";
 import { useCallback, useEffect, useId, useRef, useState, type CSSProperties } from "react";
@@ -311,6 +313,7 @@ export function PortfolioCursorList({ projects, viewProject }: { projects: Proje
           return (
             <li
               key={id}
+              id={isProjectId(id) ? projectRegistry[id].elementId : undefined}
               onPointerMove={(event) => {
                 if (!inline && event.pointerType !== "touch") follow(id, event.clientX, event.clientY);
               }}
@@ -319,11 +322,12 @@ export function PortfolioCursorList({ projects, viewProject }: { projects: Proje
               }}
             >
               {!inline && href ? (
-                <a className="project-row" href={href} {...events}>{row}</a>
+                <a className="project-row" data-carrot-anchor href={href} {...events}>{row}</a>
               ) : (
                 <button
                   type="button"
                   className="project-row"
+                  data-carrot-anchor
                   style={rowButtonStyle}
                   aria-expanded={inline ? expanded : selected}
                   aria-controls={expanded ? previewId : undefined}

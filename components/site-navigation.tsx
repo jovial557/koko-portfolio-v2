@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useIsPresent, useReducedMotion } from "motion/react";
+import { resumeUrl } from "@/lib/carrot/project-links";
 import type { Locale } from "@/i18n/routing";
 import { ScrambleText } from "./scramble-text";
 
@@ -12,7 +13,6 @@ type Labels = Record<
 >;
 
 const originalSite = "https://konatsukoko.com";
-const resumeUrl = "https://drive.google.com/file/u/2/d/1YetGrWqdIx2NNqWrOicrqhrlD6vKiFXW/view?usp=sharing";
 
 const timezones = [
   { city: "newYork", timeZone: "America/New_York" },

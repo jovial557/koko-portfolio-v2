@@ -1,8 +1,9 @@
-import { consumeStream, createUIMessageStreamResponse, streamText, toUIMessageStream } from "ai";
+import { consumeStream, createUIMessageStreamResponse, isStepCount, streamText, toUIMessageStream } from "ai";
 import { chatErrors, chatLimits, type ConversationMessage } from "@/lib/carrot/chat-contract";
 import { carrotModel } from "@/lib/carrot/model";
 import { carrotInstructions } from "@/lib/carrot/personality";
 import { checkCarrotRateLimit } from "@/lib/carrot/rate-limit";
+import { portfolioTools } from "@/lib/carrot/tools";
 
 const responseHeaders = { "Cache-Control": "no-store" };
 
@@ -89,6 +90,9 @@ export async function POST(request: Request) {
       model: carrotModel.id,
       system: carrotInstructions,
       messages,
+      tools: portfolioTools,
+      stopWhen: isStepCount(2),
+      prepareStep: ({ stepNumber }) => stepNumber > 0 ? { toolChoice: "none" } : undefined,
       abortSignal: request.signal,
       maxOutputTokens: carrotModel.maxOutputTokens,
       timeout: carrotModel.timeout,
