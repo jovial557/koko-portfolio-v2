@@ -7,8 +7,27 @@ import { portfolioTools } from "@/lib/carrot/tools";
 
 const responseHeaders = { "Cache-Control": "no-store" };
 
-function errorResponse(message: string, status: number, headers?: Record<string, string>) {
-  return Response.json({ error: message }, { status, headers: { ...responseHeaders, ...headers } });
+function crossOriginHeaders(origin: string | null): Record<string, string> | null {
+  if (!origin) return null;
+  const origins = (process.env.CARROT_CHAT_PREVIEW_ORIGINS ?? "").split(",").map((value) => value.trim());
+  if (origin !== "https://konatsukoko.com" && (!origin.startsWith("https://") || !origins.includes(origin))) return null;
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Expose-Headers": "Retry-After, X-Vercel-AI-UI-Message-Stream",
+    Vary: "Origin",
+  };
+}
+
+export function OPTIONS(request: Request) {
+  const cors = process.env.CARROT_CHAT_STANDALONE === "1"
+    ? crossOriginHeaders(request.headers.get("origin"))
+    : null;
+  return new Response(null, {
+    status: cors ? 204 : 403,
+    headers: { ...responseHeaders, Vary: "Origin", ...cors },
+  });
 }
 
 async function readBody(request: Request): Promise<unknown> {
@@ -61,7 +80,16 @@ function safeStreamError(error: unknown) {
 
 export async function POST(request: Request) {
   const origin = request.headers.get("origin");
-  if (request.headers.get("sec-fetch-site") === "cross-site" || (origin && origin !== new URL(request.url).origin)) {
+  const standalone = process.env.CARROT_CHAT_STANDALONE === "1";
+  const cors = standalone ? crossOriginHeaders(origin) : null;
+  const headers = { ...responseHeaders, ...(standalone ? { Vary: "Origin" } : {}), ...cors };
+  function errorResponse(message: string, status: number, extra?: Record<string, string>) {
+    return Response.json({ error: message }, { status, headers: { ...headers, ...extra } });
+  }
+
+  if (standalone ? !cors : (
+    request.headers.get("sec-fetch-site") === "cross-site" || (origin && origin !== new URL(request.url).origin)
+  )) {
     return errorResponse(chatErrors.invalid, 403);
   }
   if (request.headers.get("content-type")?.split(";")[0].trim() !== "application/json") {
@@ -81,7 +109,10 @@ export async function POST(request: Request) {
 
   const limit = checkCarrotRateLimit();
   if (limit?.status === 429) return errorResponse(chatErrors.rateLimit, 429, { "Retry-After": limit.retryAfter });
-  if (limit?.status === 503 || (!process.env.AI_GATEWAY_API_KEY && !process.env.VERCEL_OIDC_TOKEN)) {
+  // On Vercel the Gateway SDK also resolves OIDC from the trusted request context.
+  const missingLocalCredentials = process.env.VERCEL !== "1"
+    && !process.env.AI_GATEWAY_API_KEY && !process.env.VERCEL_OIDC_TOKEN;
+  if (limit?.status === 503 || missingLocalCredentials) {
     return errorResponse(chatErrors.unavailable, 503);
   }
 
@@ -106,7 +137,7 @@ export async function POST(request: Request) {
         onError: safeStreamError,
       }),
       consumeSseStream: consumeStream,
-      headers: responseHeaders,
+      headers,
     });
   } catch (error) {
     const message = safeStreamError(error);
