@@ -257,13 +257,6 @@
 .toolLog a, .toolLog button { text-decoration: underline; text-underline-offset: .2em; }
 .toolLog button { cursor: pointer; }
 
-.bunny[data-guide] {
-  --carrot-size: 62px;
-}
-@media (width < 600px) {
-  .bunny[data-guide] { --carrot-size: 49px; }
-}
-
 .projectMenu {
   margin-block: .45em 0;
 }
