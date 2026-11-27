@@ -34,6 +34,20 @@ const pkg = {
 };
 await writeFile(join(output, "package.json"), JSON.stringify(pkg, null, 2) + "\n");
 await writeFile(join(output, "next.config.mjs"), 'export default { env: { CARROT_CHAT_STANDALONE: "1" } };\n');
+await writeFile(join(output, "app/route.ts"), `export function GET() {
+  return new Response(\`<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>CarrotLLM Chat API</title>
+<main>
+  <h1>CarrotLLM Chat API</h1>
+  <p>Send a JSON <code>POST</code> request to <code>/api/chat</code> from the portfolio to stream a reply.</p>
+</main>
+</html>\`, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+}
+`);
 await writeFile(join(output, "tsconfig.json"), JSON.stringify({
   compilerOptions: {
     strict: true, noEmit: true, target: "ES2022", jsx: "react-jsx",
